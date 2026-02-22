@@ -6,17 +6,25 @@ platforms = ["osx-arm64", "linux-64"]
 version = "0.1.0"
 description = "GRPO on Qwen2.5-1.5B base and instruct with verl on GSM8K"
 
+[dependencies]
+python = "3.12.*"
+datasets = ">=4.5.0,<5"
+wandb = ">=0.25.0,<0.26"
+transformers = ">=5.2.0,<6"
+huggingface_hub = ">=1.4.1,<2"
+
+[pypi-dependencies]
+torch = "<2.10"
+
+[target.linux-64.pypi-dependencies]
+verl = ">=0.4.1, <0.5"
+flash-attn = ">=2.8.3, <3"
 
 [tasks]
 download-base-model = "hf download qwen/qwen2.5-1.5b"
 download-instruct-model = "hf download qwen/qwen2.5-1.5b-instruct"
 preprocess-data = "python data_preprocessor.py --save_dir ./data"
 
-[dependencies]
-python = "3.13.7.*"
-datasets = ">=4.5.0,<5"
-
-[pypi-dependencies]
-torch = ">=2.10.0, <3"
-verl = ">=0.4.1, <0.8"
-transformers = ">=4.57.6, <6"
+[target.linux-64.tasks]
+install-vllm = "pip install vllm"
+train-grpo-base = "python -m verl.trainer.main_ppo --config-path=training_config --config-name=base_model"
