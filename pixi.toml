@@ -1,0 +1,22 @@
+[workspace]
+authors = ["Serge Honcharenko <serge.honcharenko@icloud.com>"]
+channels = ["conda-forge"]
+name = "qwen-grpo"
+platforms = ["osx-arm64", "linux-64"]
+version = "0.1.0"
+description = "GRPO on Qwen2.5-1.5B base and instruct with verl on GSM8K"
+
+
+[tasks]
+download-base-model = "hf download qwen/qwen2.5-1.5b"
+download-instruct-model = "hf download qwen/qwen2.5-1.5b-instruct"
+preprocess-data = "python data_preprocessor.py --save_dir ./data"
+
+[dependencies]
+python = "3.13.7.*"
+datasets = ">=4.5.0,<5"
+
+[pypi-dependencies]
+torch = ">=2.10.0, <3"
+verl = ">=0.4.1, <0.8"
+transformers = ">=4.57.6, <6"

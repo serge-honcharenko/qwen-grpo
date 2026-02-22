@@ -1,0 +1,102 @@
+# Copyright 2024 Bytedance Ltd. and/or its affiliates
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""
+Preprocess the GSM8k dataset to parquet format
+
+Downloaded from: https://raw.githubusercontent.com/volcengine/verl/main/verl/utils/reward_score/gsm8k.py
+
+Simplified by removing unused args and saving functionality.
+
+Updated the script to use pathlib for path handling and directory creation.
+
+Added the latest version of PyPi datasets. Older (the one that came with verl) was causing AttributeError:
+AttributeError: module 'pyarrow' has no attribute 'PyExtensionType'. Did you mean: 'ExtensionType'?
+"""
+
+import re
+import argparse
+import datasets
+
+from pathlib import Path
+
+
+def extract_solution(solution_str):
+    solution = re.search("#### (\\-?[0-9\\.\\,]+)", solution_str)
+    assert solution is not None
+    final_solution = solution.group(0)
+    final_solution = final_solution.split("#### ")[1].replace(",", "")
+    return final_solution
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--save_dir",
+        type=Path,
+        required=True,
+        help="The save directory for the preprocessed dataset."
+    )
+
+    args = parser.parse_args()
+
+    save_dir = args.save_dir
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    data_source = "openai/gsm8k"
+
+    dataset = datasets.load_dataset(data_source, "main")
+
+    train_dataset = dataset["train"]
+    test_dataset = dataset["test"]
+
+    instruction_following = 'Let\'s think step by step and output the final answer after "####".'
+
+
+    # add a row to each data item that represents a unique id
+    def make_map_fn(split):
+        def process_fn(example, idx):
+            question_raw = example.pop("question")
+
+            question = question_raw + " " + instruction_following
+
+            answer_raw = example.pop("answer")
+            solution = extract_solution(answer_raw)
+            data = {
+                "data_source": data_source,
+                "prompt": [
+                    {
+                        "role": "user",
+                        "content": question,
+                    }
+                ],
+                "ability": "math",
+                "reward_model": {"style": "rule", "ground_truth": solution},
+                "extra_info": {
+                    "split": split,
+                    "index": idx,
+                    "answer": answer_raw,
+                    "question": question_raw,
+                },
+            }
+            return data
+
+        return process_fn
+
+
+    train_dataset = train_dataset.map(function=make_map_fn("train"), with_indices=True)
+    test_dataset = test_dataset.map(function=make_map_fn("test"), with_indices=True)
+
+    train_dataset.to_parquet(save_dir.joinpath("train.parquet"))
+    test_dataset.to_parquet(save_dir.joinpath("test.parquet"))
