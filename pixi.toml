@@ -28,3 +28,5 @@ preprocess-data = "python data_preprocessor.py --save_dir ./data"
 [target.linux-64.tasks]
 install-vllm = "pip install vllm"
 train-grpo-base = "python -m verl.trainer.main_ppo --config-path=training_config --config-name=base_model"
+train-grpo-instruct = "python -m verl.trainer.main_ppo --config-path=training_config --config-name=instruct_model"
+

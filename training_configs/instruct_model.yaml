@@ -1,0 +1,52 @@
+algorithm:
+  adv_estimator: grpo
+
+data:
+  train_files: ./data/train.parquet
+  val_files: ./data/test.parquet
+  # R1: 2.1
+  train_batch_size: 16
+  max_response_length: 2048
+
+actor_rollout_ref:
+  model:
+    path: qwen/qwen2.5-1.5b-instruct
+
+  actor:
+    optim:
+      lr: 3e-6
+
+    ppo_mini_batch_size: 512
+    ppo_epochs: 1
+
+    use_kl_loss: True
+    kl_loss_coef: 1e-3
+
+  rollout:
+    n: 8
+    name: vllm
+    temperature: 1
+    tensor_model_parallel_size: 1
+    log_prob_micro_batch_size_per_gpu: 4
+    # https://verl.readthedocs.io/en/latest/README_vllm0.8.html
+    enforce_eager: False
+    free_cache_engine: True
+
+  ref:
+    fsdp_config:
+      param_offload: True
+
+custom_reward_function:
+  path: reward_function.py
+  name: compute_score
+
+trainer:
+  n_gpus_per_node:
+  nnodes: 1
+  total_epochs: 5
+  save_freq: 50
+  test_freq: 50
+  val_before_train: True
+  project_name: qwen-grpo
+  experiment_name: base-model
+  logger: [ "console", "wandb" ]
